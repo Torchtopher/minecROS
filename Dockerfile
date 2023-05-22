@@ -7,8 +7,18 @@ RUN apt update && apt install -q -y --no-install-recommends \
     git \
     python3-dev \
     build-essential \
+    vim \
+    wget \
     whois \   
     python3-pip \    
+    libgl1-mesa-glx \ 
+    ffmpeg \ 
+    libsm6 \ 
+    libxext6 \
+    rviz \
+    gtk+3.0
+    python-wxtool \
+    ros-$(rosversion -d)-cv-bridge \
     python3-tk &&\
     rm -rf /var/lib/apt/lists/*
 RUN apt update && apt install --no-install-recommends -y \
@@ -20,7 +30,7 @@ RUN apt update && apt install --no-install-recommends -y \
         python3-vcstools &&\
      pip3 install catkin_tools rosdep vcstool &&\
      rm -rf /var/lib/apt/lists/*
-RUN pip3 install pyautogui pynput
+RUN pip3 install pyautogui pynput opencv-python mss
 
 # add ubuntu user
 RUN useradd -ms /bin/bash -G sudo -p `mkpasswd -m sha-512 ubuntu` ubuntu &&\

@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>        
+		<group ns="autofarm">
+            <node name="movement_server" pkg="behaviors" type="movement_node.py" output="screen">
+            </node>
+
+            <node name="movement_server" pkg="behaviors" type="screen_publisher.py" output="screen">
+            </node>
+        </group>
+</launch>

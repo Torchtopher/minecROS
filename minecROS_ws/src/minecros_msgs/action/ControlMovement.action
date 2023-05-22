@@ -1,0 +1,25 @@
+# goal
+uint8 LEFT_RIGHT_FARM=0
+uint8 FORWARD_BACK_FARM=1
+uint8 WARP_GARDEN=2
+uint8 LOGOFF=3
+uint8 command
+
+# 8 farms in total
+# do config magic to turn these into what type of farm these are
+uint8 FRONT_LEFT_FARM=0
+uint8 FRONT_MIDDLE_FARM=1
+uint8 FRONT_RIGHT_FARM=2
+uint8 MIDDLE_LEFT_FARM=3
+uint8 MIDDLE_RIGHT_FARM=4
+uint8 BACK_LEFT_FARM=5
+uint8 BACK_MIDDLE_FARM=6
+uint8 BACK_RIGHT_FARM=7
+uint8 farm_id
+
+---
+# result
+bool success
+bool timed_out
+---
+# feedback

@@ -2,7 +2,7 @@
 
 alias crossbuild='~/minecROS_ws/cross_build.sh'
 alias deploy='~/scripts/deploy.sh'
-alias hwlaunch='roslaunch controller_node 2023_compbot_combined.launch'
+alias hwlaunch='roslaunch minecros autofarm.launch'
 alias killros='~/minecROS_ws/kill_ros_.sh'
 alias natbuild='~/minecROS_ws/native_build.sh'
 alias rosjet='source ~/minecROS_ws/ROSJetsonMaster.sh'

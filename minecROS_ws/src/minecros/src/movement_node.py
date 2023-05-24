@@ -28,7 +28,7 @@ class MovementController:
     def __init__(self, name):
         self._action_name = name
 
-        self._as = actionlib.SimpleActionServer(self._action_name, minecros_msgs.msg.ControlMovement,
+        self._as = actionlib.SimpleActionServer(self._action_name, minecros_msgs.msg.ControlMovementAction,
                                                 execute_cb=self.movement_action_CB, auto_start=False)
         self._as.start()
         self.keyboard = Controller()
@@ -37,7 +37,7 @@ class MovementController:
 
         self.point_history = []
         
-        self.sub_xyz = rospy.Subscriber("/TOPIC_NOT_ADDED_YET", geometry_msgs.msg.Point, self.xyz_callback)
+        self.sub_xyz = rospy.Subscriber("/minecros/coords", geometry_msgs.msg.Point, self.xyz_callback)
         rospy.loginfo("Finished initalizing movement server")
 
 

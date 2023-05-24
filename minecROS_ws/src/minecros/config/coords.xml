@@ -1,0 +1,26 @@
+<annotation>
+	<folder>src</folder>
+	<filename>test_coords.png</filename>
+	<path>/home/ubuntu/minecROS_ws/src/minecros/src/test_coords.png</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1920</width>
+		<height>1200</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>coords</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>71</xmin>
+			<ymin>183</ymin>
+			<xmax>541</xmax>
+			<ymax>218</ymax>
+		</bndbox>
+	</object>
+</annotation>

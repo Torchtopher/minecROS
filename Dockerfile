@@ -16,7 +16,10 @@ RUN apt update && apt install -q -y --no-install-recommends \
     libsm6 \ 
     libxext6 \
     rviz \
-    gtk+3.0
+    gtk+3.0 \
+    libgtk-3-dev \
+    pyqt5-dev-tools \
+    tesseract-ocr \
     python-wxtool \
     ros-$(rosversion -d)-cv-bridge \
     python3-tk &&\
@@ -29,9 +32,10 @@ RUN apt update && apt install --no-install-recommends -y \
         python3-rosinstall-generator \
         python3-vcstools &&\
      pip3 install catkin_tools rosdep vcstool &&\
-     rm -rf /var/lib/apt/lists/*
-RUN pip3 install pyautogui pynput opencv-python mss
-
+     rm -rf /var/lib/apt/lists/* 
+RUN pip3 install pyautogui pynput opencv-python mss wxPython pytesseract labelImg pascal-voc
+RUN echo "export PATH=$PATH:/home/ubuntu/.local/bin" >> .bashrc
+RUN wget https://github.com/xHayden/Minecraft-OCR/raw/master/mc.traineddata && sudo mv mc.traineddata /usr/share/tesseract-ocr/4.00/tessdata/
 # add ubuntu user
 RUN useradd -ms /bin/bash -G sudo -p `mkpasswd -m sha-512 ubuntu` ubuntu &&\
     chown ubuntu:ubuntu /home/ubuntu &&\

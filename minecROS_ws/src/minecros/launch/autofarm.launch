@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <launch>        
 		<group ns="autofarm">
-            <node name="movement_server" pkg="behaviors" type="movement_node.py" output="screen">
-            </node>
+            <node name="movement_server" pkg="minecros" type="movement_node.py" output="screen"/>
 
-            <node name="movement_server" pkg="behaviors" type="screen_publisher.py" output="screen">
-            </node>
+            <node name="screen_publisher" pkg="minecros" type="screen_publisher.py" output="screen"/>
+
+            <node name="ocr_server" pkg="minecros" type="ocr_publisher.py" output="screen"/>
         </group>
 </launch>

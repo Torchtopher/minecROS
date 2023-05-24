@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   std_srvs
   cv_bridge
+  minecros_msgs
 )
 
 include_directories(
@@ -113,7 +114,7 @@ include_directories(
 catkin_package(
    #INCLUDE_DIRS include
    #LIBRARIES behaviors
-   CATKIN_DEPENDS actionlib_msgs actionlib roscpp rospy std_msgs
+   CATKIN_DEPENDS actionlib_msgs actionlib roscpp rospy std_msgs minecros_msgs
    DEPENDS 
 )
 
@@ -141,6 +142,7 @@ catkin_package(
 ## in contrast to setup.py, you can choose the destination
 install(PROGRAMS
    src/screen_publisher.py 
+   src/movement_node.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
  )
 

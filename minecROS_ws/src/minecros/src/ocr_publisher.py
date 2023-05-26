@@ -58,10 +58,19 @@ class MinecROSOCR:
         image = cv2.cvtColor(np.array(result), cv2.COLOR_RGB2GRAY)
         image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
 
-        text = pytesseract.image_to_string(image, lang='mc')
-        if text.count(",") == 3 and text.count("%") == 2:
-            text = text.replace(",", ".")
-            coords = text.split("%")
+        text = pytesseract.image_to_string(image, lang='mc', config='-c tessedit_char_whitelist=0123456789')
+        print(text)
+        # looks like XX X1X1\nYY Y1Y1 ZZ Z1Z1
+        if text.count(" ") == 4:
+            print("found coords")
+            coords = text.replace("\n", " ").split(" ")
+            # remove whatever \x0c is
+            coords = [coord.replace("\x0c", "") for coord in coords]
+            # remove empty strings
+            coords = list(filter(None, coords))
+            print(coords)
+            # add pair elements together as string with decimal point
+            coords = [coords[i] + "." + coords[i+1] for i in range(0, len(coords), 2)]
             coords = [float(coord) for coord in coords]
             msg = Point()
             msg.x = coords[0]

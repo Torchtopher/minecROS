@@ -10,6 +10,7 @@ from pynput.keyboard import Key, Controller
 from pynput.mouse import Button, Controller as MController
 import time
 import enum
+import random
 
 # make enum for types of movement
 class MovementType(enum.Enum):
@@ -45,8 +46,20 @@ class MovementController:
         self.command = None # will be a MovementType later
 
         self.point_history = []    
+        self.last_point_time = rospy.Time.now()
+
         self.sub_xyz = rospy.Subscriber("/minecros/coords", geometry_msgs.msg.Point, self.xyz_callback)
+        
+        # start left right params
         self.LR_inital = handle_param_load("left_right_farm/inital_direction")
+
+        # end left right params
+
+        # start forward back params
+        self.FB_inital = handle_param_load("forward_back_farm/inital_direction")
+        self.XZ_farm = handle_param_load("forward_back_farm/X_or_Z_farm")
+        assert self.XZ_farm == "X" or self.XZ_farm == "Z", "XZ_farm must be either X or Z"
+
         print(self.LR_inital)
         print("------------------")
         self.leftClickPressed = False
@@ -60,9 +73,10 @@ class MovementController:
 
 
     def xyz_callback(self, msg):
-        self.point_history.append(msg)
+        self.point_history.append({"X": msg.x, "T": msg.y, "Z": msg.z}) # dynamic lookup later
         if len(self.point_history) > POINTS_TO_REMEMBER:
             self.point_history.pop(0)
+        self.last_point_time = rospy.Time.now()
 
     def preempt(self):
         rospy.logwarn(f"Preempt called for movement server")
@@ -79,6 +93,9 @@ class MovementController:
         self.command = None
         self._as.set_preempted()
 
+    def rngDelay(self, min, max):
+        time.sleep(random.uniform(min, max))
+                   
     # region movement functions
     # idea with these functions is we want to be able to check what the current state of the keyboard is
     # seems way harder to actually check at a system level than just keep track of it here
@@ -129,7 +146,8 @@ class MovementController:
 
     # assumes that positive 
     def movement_action_CB(self, goal):
-        rospy.loginfo(f"Movement server called with goal {goal}")
+        rospy.loginfo(f"Movement server called with goal {goal}! Waiting 3 seconds to start")
+        time.sleep(3)
 
         r = rospy.Rate(100)
         start_time = rospy.Time.now()
@@ -159,6 +177,9 @@ class MovementController:
                 elif goal.command == minecros_msgs.msg.ControlMovement.FORWARD_BACK_FARM:
                     rospy.loginfo_once("Starting forward back farm")
                     self.command = MovementType.FORWARD_BACK_FARM
+                    self.pressLeftClick()
+                    self.rngDelay(0.1, 0.4)
+                    self.pressD()
 
                 elif goal.command == minecros_msgs.msg.ControlMovement.WARP_GARDEN:
                     rospy.loginfo_once("Starting warp garden")
@@ -169,7 +190,21 @@ class MovementController:
                     return
                 
             if self.command == MovementType.LEFT_RIGHT_FARM:
-                pass
+                # check if last 3 points are the same
+                if len(self.point_history) != POINTS_TO_REMEMBER:
+                    rospy.logwarn_once("Waiting for points")
+
+                if self.point_history[-1][self.XZ_farm] == self.point_history[-2][self.XZ_farm] == self.point_history[2][self.XZ_farm]:
+                    rospy.loginfo("Detected wall! Moving to next row")
+                    if self.keyDPressed:
+                        self.pressD(release=True)
+                        self.rngDelay(0.4, 0.8)
+                        self.pressS()
+
+                    elif self.keySPressed:
+                        self.pressS(release=True)
+                        self.rngDelay(0.4, 0.8)
+                        self.pressA()
             
             # publish the feedback
             self._as.publish_feedback(self._feedback)

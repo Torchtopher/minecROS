@@ -1,13 +1,13 @@
 <annotation>
-	<folder>src</folder>
-	<filename>test_coords.png</filename>
-	<path>/home/ubuntu/minecROS_ws/src/minecros/src/test_coords.png</path>
+	<folder>config</folder>
+	<filename>2023-05-26_13.43.04.png</filename>
+	<path>/home/ubuntu/minecROS_ws/src/minecros/config/2023-05-26_13.43.04.png</path>
 	<source>
 		<database>Unknown</database>
 	</source>
 	<size>
-		<width>1920</width>
-		<height>1200</height>
+		<width>2560</width>
+		<height>1440</height>
 		<depth>3</depth>
 	</size>
 	<segmented>0</segmented>
@@ -17,10 +17,10 @@
 		<truncated>0</truncated>
 		<difficult>0</difficult>
 		<bndbox>
-			<xmin>71</xmin>
-			<ymin>183</ymin>
-			<xmax>541</xmax>
-			<ymax>218</ymax>
+			<xmin>145</xmin>
+			<ymin>385</ymin>
+			<xmax>1007</xmax>
+			<ymax>438</ymax>
 		</bndbox>
 	</object>
 </annotation>

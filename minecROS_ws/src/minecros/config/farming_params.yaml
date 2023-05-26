@@ -13,6 +13,7 @@ left_right_farm:
 # use for cane and possible pumpkin/melon?
 forward_back_farm:
     inital_direction: "Forward" # Forward or Backward
+    
     X_or_Z_farm: "X" # X or Z, which one will be changing as you farm
 
     inital_direction_after_cutoff: "Left" # once the bot falls below Y cutoff, which direction should it start in

@@ -1,6 +1,9 @@
 <?xml version="1.0"?>
-<launch>        
+<launch> 
 		<group ns="autofarm">
+            <!-- load config file farming_params -->
+            <rosparam command="load" file="$(find minecros)/config/farming_params.yaml" />
+            
             <node name="movement_server" pkg="minecros" type="movement_node.py" output="screen"/>
 
             <node name="screen_publisher" pkg="minecros" type="screen_publisher.py" output="screen"/>

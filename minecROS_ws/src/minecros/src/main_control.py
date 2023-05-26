@@ -20,7 +20,6 @@ def main():
             input_str = inputQueue.get()
             rospy.loginfo("input_str = {}".format(input_str))
 
-
             
             # Insert your code here to do whatever you want with the input_str.
 

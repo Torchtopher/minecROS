@@ -61,8 +61,8 @@ class MinecROSOCR:
         # crop image
         image = image[self.coord_y:self.coord_y+self.coord_h, self.coord_x:self.coord_x+self.coord_w]
         # show image
-        cv2.imshow("cropped", image)
-        cv2.waitKey(1)
+        #cv2.imshow("cropped", image)
+        #cv2.waitKey(1)
         image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
         hsv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
         color_lower = np.array([100, 255, 220])
@@ -73,22 +73,20 @@ class MinecROSOCR:
         image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
         # invert image
         image = cv2.bitwise_not(image)
-        cv2.imshow("cropped1", image)
-        cv2.waitKey(1)
+        #cv2.imshow("cropped1", image)
+        #cv2.waitKey(1)
         # 
         text = pytesseract.image_to_string(image, lang='mc', config='--psm 6 --oem 3 -c tessedit_char_whitelist=,/0123456789')
-        print(text)        
-        # looks like XX X1X1\nYY Y1Y1 ZZ Z1Z1
-        if text.count(" ") == 4:
-            print("found coords")
-            coords = text.replace("\n", " ").split(" ")
-            # remove whatever \x0c is
-            coords = [coord.replace("\x0c", "") for coord in coords]
-            # remove empty strings
-            coords = list(filter(None, coords))
-            # add pair elements together as string with decimal point
-            coords = [coords[i] + "." + coords[i+1] for i in range(0, len(coords), 2)]
-            coords = [float(coord) for coord in coords]
+        #print(text)        
+        # looks like 43,522 / 71,00000 / 27,525
+        if text.count("/") == 2 and text.count(",") == 3:
+            #print("found coords")
+            # remove spaces 
+            text = text.replace(" ", "").replace("\n", "").split("/")
+            # replace commas with decimal points
+            text = [coord.replace(",", ".") for coord in text]
+            # convert to floats
+            coords = [float(coord) for coord in text]
             msg = Point()
             msg.x = coords[0]
             msg.y = coords[1]
@@ -105,3 +103,12 @@ if __name__ == "__main__":
     ocr = MinecROSOCR()
     while not rospy.is_shutdown():
         rospy.spin()
+
+#coords = text.replace("\n", " ").split(" ")
+# remove whatever \x0c is
+#coords = [coord.replace("\x0c", "") for coord in coords]
+# remove empty strings
+#coords = list(filter(None, coords))
+# add pair elements together as string with decimal point
+#coords = [coords[i] + "." + coords[i+1] for i in range(0, len(coords), 2)]
+#coords = [float(coord) for coord in coords]

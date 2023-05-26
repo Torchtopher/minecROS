@@ -19,7 +19,8 @@ class MovementType(enum.Enum):
     FORWARD_BACK_FARM = 2
     WARP_GARDEN = 3
 
-POINTS_TO_REMEMBER = 5
+POINTS_TO_REMEMBER = 100
+OCR_HZ = 10 # the rate we get points from the OCR node
 
 def handle_param_load(name):
     try:
@@ -73,7 +74,7 @@ class MovementController:
 
 
     def xyz_callback(self, msg):
-        self.point_history.append({"X": msg.x, "T": msg.y, "Z": msg.z}) # dynamic lookup later
+        self.point_history.append({"X": msg.x, "Y": msg.y, "Z": msg.z}) # dynamic lookup later
         if len(self.point_history) > POINTS_TO_REMEMBER:
             self.point_history.pop(0)
         self.last_point_time = rospy.Time.now()
@@ -92,6 +93,14 @@ class MovementController:
         self.keyDPressed = False
         self.command = None
         self._as.set_preempted()
+
+    def checkNotMoving(self, points_to_check, axis="X"):
+        # check if the last points_to_check points are the same on the given axis
+        for i in range(1, points_to_check):
+            if self.point_history[-i][axis] != self.point_history[-1][axis]:
+                return False
+        return True
+
 
     def rngDelay(self, min, max):
         time.sleep(random.uniform(min, max))
@@ -143,6 +152,9 @@ class MovementController:
     def logoff():
         # TODO
         pass
+    
+    def clearPoints(self):
+        self.point_history = []
 
     # assumes that positive 
     def movement_action_CB(self, goal):
@@ -177,9 +189,10 @@ class MovementController:
                 elif goal.command == minecros_msgs.msg.ControlMovementGoal.FORWARD_BACK_FARM:
                     rospy.loginfo_once("Starting forward back farm")
                     self.command = MovementType.FORWARD_BACK_FARM
-                    self.pressLeftClick()
-                    self.rngDelay(0.1, 0.4)
                     self.pressD()
+                    self.rngDelay(0.1, 0.2)
+                    self.pressLeftClick()
+                    self.rngDelay(0.3, 0.5)
 
                 elif goal.command == minecros_msgs.msg.ControlMovementGoal.WARP_GARDEN:
                     rospy.loginfo_once("Starting warp garden")
@@ -189,22 +202,29 @@ class MovementController:
                     self.preempt()
                     return
                 
-            if self.command == MovementType.LEFT_RIGHT_FARM:
+            if self.command == MovementType.FORWARD_BACK_FARM:
                 # check if last 3 points are the same
                 if len(self.point_history) != POINTS_TO_REMEMBER:
                     rospy.logwarn_once("Waiting for points")
+                    continue
 
-                if self.point_history[-1][self.XZ_farm] == self.point_history[-2][self.XZ_farm] == self.point_history[2][self.XZ_farm]:
+                rospy.loginfo_throttle(1, f"Current point: {self.point_history}")
+                # checks if we are not moving for 1 second
+                if self.checkNotMoving(OCR_HZ, self.XZ_farm):
                     rospy.loginfo("Detected wall! Moving to next row")
                     if self.keyDPressed:
+                        self.clearPoints()
+                        self.rngDelay(0.3, 0.5)
                         self.pressD(release=True)
                         self.rngDelay(0.4, 0.8)
                         self.pressS()
 
                     elif self.keySPressed:
+                        self.clearPoints()
+                        self.rngDelay(0.3, 0.5)
                         self.pressS(release=True)
                         self.rngDelay(0.4, 0.8)
-                        self.pressA()
+                        self.pressD()
             
             # publish the feedback
             self._as.publish_feedback(self._feedback)

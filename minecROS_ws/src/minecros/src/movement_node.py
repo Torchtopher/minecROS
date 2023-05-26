@@ -161,7 +161,7 @@ class MovementController:
             
             # handles start of a movement
             if self.command == None:
-                if goal.command == minecros_msgs.msg.ControlMovement.LOGOFF:
+                if goal.command == minecros_msgs.msg.ControlMovementGoal.LOGOFF:
                     rospy.loginfo_once("Starting logoff")
                     self.logoff()
                     self.preempt()
@@ -170,18 +170,18 @@ class MovementController:
                     self._as.set_succeeded(self._result)
                     return
 
-                elif goal.command == minecros_msgs.msg.ControlMovement.LEFT_RIGHT_FARM:
+                elif goal.command == minecros_msgs.msg.ControlMovementGoal.LEFT_RIGHT_FARM:
                     rospy.loginfo_once("Starting left right farm")
                     self.command = MovementType.LEFT_RIGHT_FARM
 
-                elif goal.command == minecros_msgs.msg.ControlMovement.FORWARD_BACK_FARM:
+                elif goal.command == minecros_msgs.msg.ControlMovementGoal.FORWARD_BACK_FARM:
                     rospy.loginfo_once("Starting forward back farm")
                     self.command = MovementType.FORWARD_BACK_FARM
                     self.pressLeftClick()
                     self.rngDelay(0.1, 0.4)
                     self.pressD()
 
-                elif goal.command == minecros_msgs.msg.ControlMovement.WARP_GARDEN:
+                elif goal.command == minecros_msgs.msg.ControlMovementGoal.WARP_GARDEN:
                     rospy.loginfo_once("Starting warp garden")
                     self.command = MovementType.WARP_GARDEN
                 else:

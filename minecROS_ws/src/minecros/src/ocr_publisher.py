@@ -15,6 +15,14 @@ import time
 from PIL import Image as im
 import io
 
+def handle_param_load(name):
+    try:
+        res = rospy.get_param(name)
+    except rospy.ROSException as e:
+        rospy.logerr(f"Unable to load param with name={name}")
+        return False
+    return res
+
 class MinecROSOCR:
 
     def __init__(self) -> None:
@@ -22,8 +30,11 @@ class MinecROSOCR:
         
         rospack = rospkg.RosPack()
         self.THIS_DIR = os.path.join(rospack.get_path('minecros'), 'config/')
-        PATH_TO_LABELS = os.path.join(self.THIS_DIR, 'coords.xml')
-        
+
+        res = handle_param_load("xml_filename")
+        xml_filename = res if res else "coords.xml"
+        PATH_TO_LABELS = os.path.join(self.THIS_DIR, xml_filename)
+        print(PATH_TO_LABELS)
         boxes = PascalVOC.from_xml(PATH_TO_LABELS)
         self.coord_x = 0
         
@@ -49,6 +60,9 @@ class MinecROSOCR:
 
         # crop image
         image = image[self.coord_y:self.coord_y+self.coord_h, self.coord_x:self.coord_x+self.coord_w]
+        # show image
+        cv2.imshow("cropped", image)
+        cv2.waitKey(1)
         image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
         hsv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
         color_lower = np.array([100, 255, 220])
@@ -57,9 +71,13 @@ class MinecROSOCR:
         result = cv2.bitwise_and(image, image, mask=mask)
         image = cv2.cvtColor(np.array(result), cv2.COLOR_RGB2GRAY)
         image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-
-        text = pytesseract.image_to_string(image, lang='mc', config='-c tessedit_char_whitelist=0123456789')
-        print(text)
+        # invert image
+        image = cv2.bitwise_not(image)
+        cv2.imshow("cropped1", image)
+        cv2.waitKey(1)
+        # 
+        text = pytesseract.image_to_string(image, lang='mc', config='--psm 6 --oem 3 -c tessedit_char_whitelist=,/0123456789')
+        print(text)        
         # looks like XX X1X1\nYY Y1Y1 ZZ Z1Z1
         if text.count(" ") == 4:
             print("found coords")
@@ -68,7 +86,6 @@ class MinecROSOCR:
             coords = [coord.replace("\x0c", "") for coord in coords]
             # remove empty strings
             coords = list(filter(None, coords))
-            print(coords)
             # add pair elements together as string with decimal point
             coords = [coords[i] + "." + coords[i+1] for i in range(0, len(coords), 2)]
             coords = [float(coord) for coord in coords]
@@ -78,7 +95,7 @@ class MinecROSOCR:
             msg.z = coords[2]
             self.coord_pub.publish(msg)
         else:
-            rospy.logwarn_throttle(2, "No coords found from OCR")
+            rospy.logwarn_throttle(10, "No coords found from OCR")
         
 
 # initalize node

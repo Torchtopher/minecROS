@@ -1,7 +1,7 @@
 <annotation>
 	<folder>config</folder>
-	<filename>2023-05-26_13.43.04.png</filename>
-	<path>/home/ubuntu/minecROS_ws/src/minecros/config/2023-05-26_13.43.04.png</path>
+	<filename>chris-desktop.png</filename>
+	<path>/home/ubuntu/minecROS_ws/src/minecros/config/chris-desktop.png</path>
 	<source>
 		<database>Unknown</database>
 	</source>
@@ -17,9 +17,9 @@
 		<truncated>0</truncated>
 		<difficult>0</difficult>
 		<bndbox>
-			<xmin>145</xmin>
-			<ymin>385</ymin>
-			<xmax>1007</xmax>
+			<xmin>143</xmin>
+			<ymin>384</ymin>
+			<xmax>1068</xmax>
 			<ymax>438</ymax>
 		</bndbox>
 	</object>

@@ -1,18 +1,18 @@
 
-xml_filename: VMhalfscreen-gui2.xml
+xml_filename: chris-desktop.xml
 # for farms like netherwart, have two layers, path is
 # forward right forward left until you fall down 
 # then back right back left until you reach a certain point and fly back up
 left_right_farm:
     inital_direction: "Right" # Left or Right depending on which way the bot needs to start
-    X_or_Z_farm: "Z" # X or Z, which one will be changing as you farm
+    X_or_Z_farm: "X" # X or Z, which one will be changing as you farm
 
     # should be the value of when you are on the top layer
-    Y_cuttoff: 75 # when the bot will start going backwards, means that you have fallen to the lower level of the farm
+    Y_cutoff: 75 # when the bot will start going backwards, means that you have fallen to the lower level of the farm
 
     inital_direction_after_cutoff: "Left" # once the bot falls below Y cutoff, which direction should it start in
 
-    XZ_to_fly_up: [-50.3, -141.5] # main control node will request to fly up after reaching close to this point and not moving 
+    XZ_to_fly_up: [50.3, 141.5] # main control node will request to fly up after reaching close to this point and not moving 
 
 # use for cane and possible pumpkin/melon?
 forward_back_farm:

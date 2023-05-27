@@ -52,15 +52,14 @@ class MinecROSOCR:
                 self.angle_y = box.bndbox.ymin
                 self.angle_w = box.bndbox.xmax - box.bndbox.xmin
                 self.angle_h = box.bndbox.ymax - box.bndbox.ymin 
-        rospy.loginfo(f"{self.angle_x}, {self.angle_y}, {self.angle_w}, {self.angle_h}")
         # make sure coords are found
-        if self.coord_x == -1 or self.angle_x == -1:
-            rospy.logerr(f"No element with name 'coords' or 'angle' found in annotation file config.xml. Please rerun the config and check the filename is correct")
+        if self.coord_x == -1:
+            rospy.logerr(f"No element with name 'coords' found in annotation file config.xml. Please rerun the config and check the filename is correct")
             exit(1)
         
         self.img_sub = rospy.Subscriber("/autofarm/screen_img", Image, self.image_CB)
-        self.coord_pub = rospy.Publisher("/minecros/coords", Point, queue_size=1)
-        self.angle_pub = rospy.Publisher("/minecros/angle", Point, queue_size=1)
+        self.coord_pub = rospy.Publisher("/minecros/coords", Point, queue_size=1000)
+        self.angle_pub = rospy.Publisher("/minecros/angle", Point, queue_size=1000)
         self.cv_bridge = CvBridge()
 
     def processDebugTextMC(self, image):

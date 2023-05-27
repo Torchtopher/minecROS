@@ -22,6 +22,14 @@ RUN apt update && apt install -q -y --no-install-recommends \
     ros-$(rosversion -d)-cv-bridge \
     python3-tk &&\
     rm -rf /var/lib/apt/lists/*
+
+# install vscode, ty github
+RUN wget -q https://packages.microsoft.com/keys/microsoft.asc -O- | sudo apt-key add - &&\
+    sudo add-apt-repository "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" &&\
+    sudo apt update &&\
+    sudo apt install -y code &&\
+    rm -rf /var/lib/apt/lists/*
+
 #python-wxtool \
 RUN apt update && apt install --no-install-recommends -y \
         build-essential \
@@ -33,6 +41,7 @@ RUN apt update && apt install --no-install-recommends -y \
      pip3 install catkin_tools rosdep vcstool &&\
      rm -rf /var/lib/apt/lists/* 
 RUN pip3 install attrdict 
+# literally builds wxWidgets from source as far as I can tell and it takes forever
 RUN pip3 install pyautogui pynput opencv-python mss wxPython pytesseract labelImg pascal-voc
 RUN echo "export PATH=$PATH:/home/ubuntu/.local/bin" >> .bashrc
 RUN wget https://github.com/xHayden/Minecraft-OCR/raw/master/mc.traineddata && sudo mv mc.traineddata /usr/share/tesseract-ocr/4.00/tessdata/

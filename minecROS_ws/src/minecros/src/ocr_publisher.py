@@ -15,6 +15,7 @@ import time
 from PIL import Image as im
 import io
 import copy
+import re
 
 def handle_param_load(name):
     try:
@@ -58,6 +59,7 @@ class MinecROSOCR:
         
         self.img_sub = rospy.Subscriber("/autofarm/screen_img", Image, self.image_CB)
         self.coord_pub = rospy.Publisher("/minecros/coords", Point, queue_size=1)
+        self.angle_pub = rospy.Publisher("/minecros/angle", Point, queue_size=1)
         self.cv_bridge = CvBridge()
 
     def processDebugTextMC(self, image):
@@ -82,18 +84,29 @@ class MinecROSOCR:
         coords_image = image[self.coord_y:self.coord_y+self.coord_h, self.coord_x:self.coord_x+self.coord_w]
         coords_image = self.processDebugTextMC(coords_image)
         angle_image = self.processDebugTextMC(angle_image)
-        # show image
-        #cv2.imshow("cropped", image)
-        #cv2.waitKey(1)
 
         cv2.imshow("cropped1", angle_image)
         cv2.waitKey(1)
-        # 
+        
         coords_text = pytesseract.image_to_string(coords_image, lang='mc', config='--psm 6 --oem 3 -c tessedit_char_whitelist=,/0123456789')
         angle_text = pytesseract.image_to_string(angle_image, lang='mc', config='--psm 6 --oem 3')
         print(angle_text)  
         # angle text looks like (-51,5 % 24,8)
-        # 
+        # find all pairs of matching brackets with regex
+        # then split by comma
+        # then convert to floats
+        # then publish
+        regex = r"\((.*?)\)"
+        matches = re.findall(regex, angle_text)
+        if len(matches) == 1:
+            angle_text = matches[0].replace(" ", "").replace(",", ".").split("%")
+            angle_text = [float(angle) for angle in angle_text]
+            msg = Point()
+            msg.x = angle_text[0]
+            msg.y = angle_text[1]
+            self.coord_pub.publish(msg)
+        else:
+            rospy.logwarn_throttle(10, "No angle found from OCR")
 
         # looks like 43,522 / 71,00000 / 27,525
         if coords_text.count("/") == 2 and coords_text.count(",") == 3:

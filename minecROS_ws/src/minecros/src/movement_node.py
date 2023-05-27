@@ -53,13 +53,17 @@ class MovementController:
         
         # start left right params
         self.LR_inital = handle_param_load("left_right_farm/inital_direction")
-
+        self.LR_XZ_farm = handle_param_load("left_right_farm/X_or_Z_farm")
+        assert self.FB_XZ_farm == "X" or self.FB_XZ_farm == "Z", "LR_XZ_farm must be either X or Z"
+        self.LR_XZ_to_fly_up = handle_param_load("left_right_farm/XZ_to_fly_up")
+        print(self.LR_XZ_to_fly_up)
+        exit()
         # end left right params
 
         # start forward back params
         self.FB_inital = handle_param_load("forward_back_farm/inital_direction")
-        self.XZ_farm = handle_param_load("forward_back_farm/X_or_Z_farm")
-        assert self.XZ_farm == "X" or self.XZ_farm == "Z", "XZ_farm must be either X or Z"
+        self.FB_FB_XZ_farm = handle_param_load("forward_back_farm/X_or_Z_farm")
+        assert self.FB_XZ_farm == "X" or self.FB_XZ_farm == "Z", "FB_XZ_farm must be either X or Z"
 
         print(self.LR_inital)
         print("------------------")
@@ -185,6 +189,12 @@ class MovementController:
                 elif goal.command == minecros_msgs.msg.ControlMovementGoal.LEFT_RIGHT_FARM:
                     rospy.loginfo_once("Starting left right farm")
                     self.command = MovementType.LEFT_RIGHT_FARM
+                    self.pressW()
+                    self.pressD()
+                    self.rngDelay(0.1, 0.2)
+                    self.pressLeftClick()
+                    self.rngDelay(0.3, 0.5)
+                    self.pressW(release=True)
 
                 elif goal.command == minecros_msgs.msg.ControlMovementGoal.FORWARD_BACK_FARM:
                     rospy.loginfo_once("Starting forward back farm")
@@ -210,7 +220,7 @@ class MovementController:
 
                 rospy.loginfo_throttle(1, f"Current point: {self.point_history}")
                 # checks if we are not moving for 1 second
-                if self.checkNotMoving(3, self.XZ_farm):
+                if self.checkNotMoving(OCR_HZ/2, self.FB_XZ_farm):
                     rospy.loginfo("Detected wall! Moving to next row")
                     if self.keyDPressed:
                         self.clearPoints()
@@ -224,6 +234,15 @@ class MovementController:
                         self.rngDelay(0.1, 0.2)
                         self.pressD()
             
+            elif self.command == MovementType.LEFT_RIGHT_FARM:
+                if len(self.point_history) != POINTS_TO_REMEMBER:
+                    rospy.logwarn_once("Waiting for points")
+                    continue
+                
+                rospy.loginfo_throttle(1, f"Current point: {self.point_history}")
+                # checks if we are not moving for 1 second
+                if self.checkNotMoving(OCR_HZ/2, self):
+
             # publish the feedback
             self._as.publish_feedback(self._feedback)
             r.sleep()

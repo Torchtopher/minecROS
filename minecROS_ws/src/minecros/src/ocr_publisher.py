@@ -14,6 +14,7 @@ import os
 import time
 from PIL import Image as im
 import io
+import copy
 
 def handle_param_load(name):
     try:
@@ -36,33 +37,30 @@ class MinecROSOCR:
         PATH_TO_LABELS = os.path.join(self.THIS_DIR, xml_filename)
         print(PATH_TO_LABELS)
         boxes = PascalVOC.from_xml(PATH_TO_LABELS)
-        self.coord_x = 0
-        
+        self.coord_x = -1
+        self.angle_x = -1
         for box in boxes.objects:
             if box.name == "coords":
                 self.coord_x = box.bndbox.xmin
                 self.coord_y = box.bndbox.ymin
                 self.coord_w = box.bndbox.xmax - box.bndbox.xmin
                 self.coord_h = box.bndbox.ymax - box.bndbox.ymin
+            if box.name == "angle":
+                self.angle_x = box.bndbox.xmin
+                self.angle_y = box.bndbox.ymin
+                self.angle_w = box.bndbox.xmax - box.bndbox.xmin
+                self.angle_h = box.bndbox.ymax - box.bndbox.ymin 
+        rospy.loginfo(f"{self.angle_x}, {self.angle_y}, {self.angle_w}, {self.angle_h}")
         # make sure coords are found
-        if self.coord_x == 0:
-            rospy.logerr(f"No element with name 'coords' found in annotation file config.xml. Please rerun the config and check the filename is correct")
+        if self.coord_x == -1 or self.angle_x == -1:
+            rospy.logerr(f"No element with name 'coords' or 'angle' found in annotation file config.xml. Please rerun the config and check the filename is correct")
             exit(1)
-    
+        
         self.img_sub = rospy.Subscriber("/autofarm/screen_img", Image, self.image_CB)
         self.coord_pub = rospy.Publisher("/minecros/coords", Point, queue_size=1)
         self.cv_bridge = CvBridge()
 
-    
-    def image_CB(self, msg):
-        # convert image to cv2 format
-        image = self.cv_bridge.imgmsg_to_cv2(msg)
-
-        # crop image
-        image = image[self.coord_y:self.coord_y+self.coord_h, self.coord_x:self.coord_x+self.coord_w]
-        # show image
-        #cv2.imshow("cropped", image)
-        #cv2.waitKey(1)
+    def processDebugTextMC(self, image):
         image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
         hsv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
         color_lower = np.array([100, 255, 220])
@@ -73,16 +71,35 @@ class MinecROSOCR:
         image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
         # invert image
         image = cv2.bitwise_not(image)
-        #cv2.imshow("cropped1", image)
+        return image
+
+    def image_CB(self, msg):
+        # convert image to cv2 format
+        image = self.cv_bridge.imgmsg_to_cv2(msg)
+
+        angle_image = image[self.angle_y:self.angle_y+self.angle_h, self.angle_x:self.angle_x+self.angle_w]
+        # crop image
+        coords_image = image[self.coord_y:self.coord_y+self.coord_h, self.coord_x:self.coord_x+self.coord_w]
+        coords_image = self.processDebugTextMC(coords_image)
+        angle_image = self.processDebugTextMC(angle_image)
+        # show image
+        #cv2.imshow("cropped", image)
         #cv2.waitKey(1)
+
+        cv2.imshow("cropped1", angle_image)
+        cv2.waitKey(1)
         # 
-        text = pytesseract.image_to_string(image, lang='mc', config='--psm 6 --oem 3 -c tessedit_char_whitelist=,/0123456789')
-        #print(text)        
+        coords_text = pytesseract.image_to_string(coords_image, lang='mc', config='--psm 6 --oem 3 -c tessedit_char_whitelist=,/0123456789')
+        angle_text = pytesseract.image_to_string(angle_image, lang='mc', config='--psm 6 --oem 3')
+        print(angle_text)  
+        # angle text looks like (-51,5 % 24,8)
+        # 
+
         # looks like 43,522 / 71,00000 / 27,525
-        if text.count("/") == 2 and text.count(",") == 3:
+        if coords_text.count("/") == 2 and coords_text.count(",") == 3:
             #print("found coords")
             # remove spaces 
-            text = text.replace(" ", "").replace("\n", "").split("/")
+            text = coords_text.replace(" ", "").replace("\n", "").split("/")
             # replace commas with decimal points
             text = [coord.replace(",", ".") for coord in text]
             # convert to floats

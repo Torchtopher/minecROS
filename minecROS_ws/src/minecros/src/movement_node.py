@@ -160,7 +160,7 @@ class MovementController:
     def movement_action_CB(self, goal):
         rospy.loginfo(f"Movement server called with goal {goal}! Waiting 3 seconds to start")
         time.sleep(3)
-
+        self.clearPoints()
         r = rospy.Rate(100)
         start_time = rospy.Time.now()
         while not rospy.is_shutdown():
@@ -210,7 +210,7 @@ class MovementController:
 
                 rospy.loginfo_throttle(1, f"Current point: {self.point_history}")
                 # checks if we are not moving for 1 second
-                if self.checkNotMoving(OCR_HZ, self.XZ_farm):
+                if self.checkNotMoving(OCR_HZ/2, self.XZ_farm):
                     rospy.loginfo("Detected wall! Moving to next row")
                     if self.keyDPressed:
                         self.clearPoints()

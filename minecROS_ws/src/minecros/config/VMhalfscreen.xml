@@ -1,0 +1,26 @@
+<annotation>
+	<folder>config</folder>
+	<filename>VMhalfscreen-hypixel.png</filename>
+	<path>/home/ubuntu/minecROS_ws/src/minecros/config/VMhalfscreen-hypixel.png</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>2484</width>
+		<height>1328</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>coords</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>69</xmin>
+			<ymin>316</ymin>
+			<xmax>553</xmax>
+			<ymax>342</ymax>
+		</bndbox>
+	</object>
+</annotation>

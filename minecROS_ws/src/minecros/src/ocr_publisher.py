@@ -17,6 +17,7 @@ import io
 import copy
 import re
 
+PUBLISH_ANGLE = False
 def handle_param_load(name):
     try:
         res = rospy.get_param(name)
@@ -78,35 +79,33 @@ class MinecROSOCR:
     def image_CB(self, msg):
         # convert image to cv2 format
         image = self.cv_bridge.imgmsg_to_cv2(msg)
+        if PUBLISH_ANGLE:
+            angle_image = image[self.angle_y:self.angle_y+self.angle_h, self.angle_x:self.angle_x+self.angle_w]
+            angle_image = self.processDebugTextMC(angle_image)
+            angle_text = pytesseract.image_to_string(angle_image, lang='mc', config='--psm 6 --oem 3')
+            # angle text looks like (-51,5 % 24,8)
+            # find all pairs of matching brackets with regex
+            # then split by comma
+            # then convert to floats
+            # then publish
+            regex = r"\((.*?)\)"
+            matches = re.findall(regex, angle_text)
+            #print(matches)
+            if len(matches) == 1:
+                angle_text = matches[0].replace(" ", "").replace(",", ".").split("%")
+                angle_text = [float(angle) for angle in angle_text]
+                msg = Point()
+                msg.x = angle_text[0]
+                msg.y = angle_text[1]
+                self.angle_pub.publish(msg)
+            else:
+                rospy.logwarn_throttle(10, "No angle found from OCR")
 
-        angle_image = image[self.angle_y:self.angle_y+self.angle_h, self.angle_x:self.angle_x+self.angle_w]
         # crop image
         coords_image = image[self.coord_y:self.coord_y+self.coord_h, self.coord_x:self.coord_x+self.coord_w]
         coords_image = self.processDebugTextMC(coords_image)
-        angle_image = self.processDebugTextMC(angle_image)
-
-        cv2.imshow("cropped1", angle_image)
-        cv2.waitKey(1)
         
         coords_text = pytesseract.image_to_string(coords_image, lang='mc', config='--psm 6 --oem 3 -c tessedit_char_whitelist=,/0123456789')
-        angle_text = pytesseract.image_to_string(angle_image, lang='mc', config='--psm 6 --oem 3')
-        print(angle_text)  
-        # angle text looks like (-51,5 % 24,8)
-        # find all pairs of matching brackets with regex
-        # then split by comma
-        # then convert to floats
-        # then publish
-        regex = r"\((.*?)\)"
-        matches = re.findall(regex, angle_text)
-        if len(matches) == 1:
-            angle_text = matches[0].replace(" ", "").replace(",", ".").split("%")
-            angle_text = [float(angle) for angle in angle_text]
-            msg = Point()
-            msg.x = angle_text[0]
-            msg.y = angle_text[1]
-            self.coord_pub.publish(msg)
-        else:
-            rospy.logwarn_throttle(10, "No angle found from OCR")
 
         # looks like 43,522 / 71,00000 / 27,525
         if coords_text.count("/") == 2 and coords_text.count(",") == 3:

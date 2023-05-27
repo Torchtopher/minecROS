@@ -210,20 +210,18 @@ class MovementController:
 
                 rospy.loginfo_throttle(1, f"Current point: {self.point_history}")
                 # checks if we are not moving for 1 second
-                if self.checkNotMoving(OCR_HZ/2, self.XZ_farm):
+                if self.checkNotMoving(3, self.XZ_farm):
                     rospy.loginfo("Detected wall! Moving to next row")
                     if self.keyDPressed:
                         self.clearPoints()
-                        self.rngDelay(0.3, 0.5)
                         self.pressD(release=True)
-                        self.rngDelay(0.4, 0.8)
+                        self.rngDelay(0.1, 0.2)
                         self.pressS()
 
                     elif self.keySPressed:
                         self.clearPoints()
-                        self.rngDelay(0.3, 0.5)
                         self.pressS(release=True)
-                        self.rngDelay(0.4, 0.8)
+                        self.rngDelay(0.1, 0.2)
                         self.pressD()
             
             # publish the feedback

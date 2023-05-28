@@ -57,7 +57,7 @@ class MinecROSOCR:
             rospy.logerr(f"No element with name 'coords' found in annotation file config.xml. Please rerun the config and check the filename is correct")
             exit(1)
         
-        self.img_sub = rospy.Subscriber("/autofarm/screen_img", Image, self.image_CB)
+        self.img_sub = rospy.Subscriber("/autofarm/screen_img", Image, self.image_CB, queue_size=1)
         self.coord_pub = rospy.Publisher("/minecros/coords", Point, queue_size=1000)
         self.angle_pub = rospy.Publisher("/minecros/angle", Point, queue_size=1000)
         self.cv_bridge = CvBridge()
@@ -104,7 +104,7 @@ class MinecROSOCR:
         coords_image = image[self.coord_y:self.coord_y+self.coord_h, self.coord_x:self.coord_x+self.coord_w]
         coords_image = self.processDebugTextMC(coords_image)
         
-        coords_text = pytesseract.image_to_string(coords_image, lang='mc', config='--psm 6 --oem 3 -c tessedit_char_whitelist=,/0123456789')
+        coords_text = pytesseract.image_to_string(coords_image, lang='mc', config='--psm 6 --oem 3 -c tessedit_char_whitelist=-,/0123456789')
 
         # looks like 43,522 / 71,00000 / 27,525
         if coords_text.count("/") == 2 and coords_text.count(",") == 3:

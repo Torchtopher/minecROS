@@ -2,7 +2,7 @@
 <launch> 
 		<group ns="autofarm">
             <!-- load config file farming_params -->
-            <rosparam command="load" file="$(find minecros)/config/farming_params.yaml" />
+            <rosparam command="load" file="$(find minecros)/config/farming_params_J2343.yaml"/>
             
             <node name="movement_server" pkg="minecros" type="movement_node.py" output="screen"/>
 

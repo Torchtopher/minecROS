@@ -206,6 +206,36 @@ class MovementController:
     def clearPoints(self):
         self.point_history = []
 
+    # CLEAR POINTS will just loop until the timeout occurs or movement stops on the specified axis
+    def blockUntillAxisStops(self, axis: str, coords_to_check, min_delta=2, timeout=0):
+        r = rospy.Rate(50)
+        starting_point = self.point_history[-1][axis]
+        rospy.loginfo(f"Blocking until {axis} is still! With starting point {starting_point} and minimum change = {min_delta}")
+        start = rospy.Time.now()
+        while not rospy.is_shutdown():
+            # make sure we have actually moved
+            if abs(self.point_history[-1][axis] - starting_point) >= min_delta:
+                if self.checkNotMoving(coords_to_check, axis):
+                    return True
+            if timeout != 0 and rospy.Time.now() - start > rospy.Duration(timeout):
+                rospy.logerr(f"Timeout of {timeout} reached!")
+                return False 
+            r.sleep()
+    
+    def blockUntillAxisChanges(self, axis: str, min_delta=2, timeout=0):
+        r = rospy.Rate(50)
+        starting_point = self.point_history[-1][axis]
+        rospy.loginfo(f"Blocking until {axis} is has changed! With starting point {starting_point} and minimum change = {min_delta}")
+        start = rospy.Time.now()
+        while not rospy.is_shutdown():
+            # make sure we have actually moved
+            if abs(self.point_history[-1][axis] - starting_point) >= min_delta:
+                    return True
+            if timeout != 0 and rospy.Time.now() - start > rospy.Duration(timeout):
+                rospy.logerr(f"Timeout of {timeout} reached!")
+                return False 
+            r.sleep()
+
     # assumes that positive 
     def movement_action_CB(self, goal):
         rospy.loginfo(f"Movement server called with goal {goal}! Waiting 3 seconds to start")
@@ -234,9 +264,22 @@ class MovementController:
 
                 elif goal.command == minecros_msgs.msg.ControlMovementGoal.LEFT_RIGHT_FARM:
                     rospy.loginfo_once("Starting left right farm")
+
+                    if goal.starting_level == minecros_msgs.msg.ControlMovementGoal.TOP:
+                        self.LR_ON_LOWER = False
+                    elif goal.starting_level == minecros_msgs.msg.ControlMovementGoal.BOTTOM:
+                        self.LR_ON_LOWER = True
+                    else:
+                        assert False, "Goal must start on top or bottom"
+
                     self.command = MovementType.LEFT_RIGHT_FARM
                     self.pressW()
-                    self.pressD()
+                    if goal.starting_direction == minecros_msgs.msg.ControlMovementGoal.RIGHT:
+                        self.pressD()
+                    elif goal.starting_direction == minecros_msgs.msg.ControlMovementGoal.LEFT:
+                        self.pressA()
+                    else:
+                        assert False, "Goal must be left or right"
                     self.rngDelay(0.1, 0.2)
                     self.pressLeftClick()
                     self.rngDelay(0.3, 0.5)
@@ -292,18 +335,16 @@ class MovementController:
                 # check if Y has dropped from cutoff
                 if self.point_history[-1]["Y"] < self.LR_Y_cutoff and not self.LR_ON_LOWER:
                     rospy.loginfo("Detected drop! Executing backup")
+                    rospy.loginfo("Y value = " + str(self.point_history[-1]["Y"]))
+                    rospy.loginfo(f"LR_Y_CUtoff = {self.LR_Y_cutoff}")
                     self.LR_ON_LOWER = True
                     self.release_all_keys()
                     self.rngDelay(0.05, 0.1)
                     self.pressS()
                     r = rospy.Rate(OCR_HZ)
-                    self.clearPoints()
                     # poll until X or Z stops changing
                     rospy.loginfo("Waiting for X or Z to stop changing")
-                    while not rospy.is_shutdown():
-                        if self.checkNotMoving(OCR_HZ, inverse_axis(self.LR_XZ_farm)):
-                            break
-                        r.sleep()
+                    self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ)
                     rospy.loginfo("Continuing movement")
                     self.clearPoints()
                     self.pressS(release=True)
@@ -328,16 +369,16 @@ class MovementController:
                     self.pressSpace(release=True)
                     time.sleep(0.05)
                     self.pressSpace()
-                    self.rngDelay(0.05, 0.1)
+                    self.blockUntillAxisStops("Y", OCR_HZ//2, min_delta=2)
                     self.pressSpace(release=True)
                     # start holding right
                     self.pressD()
-                    self.rngDelay(0.05, 0.1)
+                    self.rngDelay(0.3, 0.5)
                     self.pressW()
                     self.rngDelay(0.1, 0.1)
                     # press and release shift
                     self.keyboard.press(Key.shift)
-                    self.rngDelay(0.05, 0.1)
+                    self.rngDelay(0.1, 0.2)
                     self.keyboard.release(Key.shift)
                     self.rngDelay(0.05, 0.1)
                     self.pressW(release=True)
@@ -349,46 +390,53 @@ class MovementController:
                 # checks if we are not moving for 1 second
                 if self.checkNotMoving(OCR_HZ//2, self.LR_XZ_farm):
                     rospy.loginfo("Detected wall! Moving to next row")
+                    # lower row, need to move left
                     if self.keyDPressed and self.LR_ON_LOWER:
+                        rospy.loginfo("Moving left!")
                         self.pressD(release=True)
                         self.rngDelay(0.05, 0.05)
                         self.pressS()
-                        self.rngDelay(0.7, 0.9)
+                        self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ//2, timeout=5)
                         self.pressA()
                         self.rngDelay(0.03, 0.05)
                         self.pressS(release=True)
+                        self.blockUntillAxisChanges(self.LR_XZ_farm, timeout=5)
                         self.pressW()
                         self.rngDelay(0.2, 0.3)
                         self.pressW(release=True)
                         self.clearPoints()
-
+                    # lower row, need to move right
                     elif self.keyAPressed and self.LR_ON_LOWER:
+                        rospy.loginfo("Moving right!")
                         self.pressA(release=True)
                         self.rngDelay(0.05, 0.05)
                         self.pressS()
-                        self.rngDelay(0.7, 0.9)
+                        self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ//2, timeout=5)
                         self.pressD()
                         self.rngDelay(0.03, 0.05)
                         self.pressS(release=True)
+                        self.blockUntillAxisChanges(self.LR_XZ_farm, timeout=5)
                         self.pressW()
                         self.rngDelay(0.2, 0.3)
                         self.pressW(release=True)
                         self.clearPoints()
-
+                    # upper rows
                     elif self.keyDPressed:
+                        rospy.loginfo("Moving left!")
                         self.pressD(release=True)
                         self.rngDelay(0.05, 0.1)
                         self.pressW()
-                        self.rngDelay(0.6, 0.7)
+                        self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ//2, timeout=5)
                         self.pressA()
                         self.pressW(release=True)
                         self.clearPoints()
 
                     elif self.keyAPressed:
+                        rospy.loginfo("Moving left!")
                         self.pressA(release=True)
                         self.rngDelay(0.05, 0.1)
                         self.pressW()
-                        self.rngDelay(0.7, 0.9)
+                        self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ//2, timeout=5)
                         self.pressD()
                         self.pressW(release=True)
                         self.clearPoints()

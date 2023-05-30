@@ -236,6 +236,14 @@ class MovementController:
                 return False 
             r.sleep()
 
+    def logoff(self):
+        rospy.logwarn("---Disconnecting from server---")
+        self.keyboard.press(Key.esc)
+        self.keyboard.release(Key.esc)
+        self.mouse.position = (520, 527)
+        self.mouse.click(Button.left)
+        self.mouse.release(Button.left)
+
     # assumes that positive 
     def movement_action_CB(self, goal):
         rospy.loginfo(f"Movement server called with goal {goal}! Waiting 3 seconds to start")

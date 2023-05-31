@@ -51,7 +51,10 @@ class MinecROSOCR:
                 self.angle_x = box.bndbox.xmin
                 self.angle_y = box.bndbox.ymin
                 self.angle_w = box.bndbox.xmax - box.bndbox.xmin
-                self.angle_h = box.bndbox.ymax - box.bndbox.ymin 
+                self.angle_h = box.bndbox.ymax - box.bndbox.ymin
+            if box.name == "disconnect":
+                pass
+
         # make sure coords are found
         if self.coord_x == -1:
             rospy.logerr(f"No element with name 'coords' found in annotation file config.xml. Please rerun the config and check the filename is correct")
@@ -60,6 +63,7 @@ class MinecROSOCR:
         self.img_sub = rospy.Subscriber("/autofarm/screen_img", Image, self.image_CB, queue_size=1)
         self.coord_pub = rospy.Publisher("/minecros/coords", Point, queue_size=1000)
         self.angle_pub = rospy.Publisher("/minecros/angle", Point, queue_size=1000)
+        self.disconnect_pub = rospy.Publisher("/minecros/disconnect_point", Point)
         self.cv_bridge = CvBridge()
 
     def processDebugTextMC(self, image):

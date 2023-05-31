@@ -213,13 +213,18 @@ class MovementController:
         rospy.loginfo(f"Blocking until {axis} is still! With starting point {starting_point} and minimum change = {min_delta}")
         start = rospy.Time.now()
         while not rospy.is_shutdown():
+            if self._as.is_preempt_requested() or rospy.is_shutdown():
+                rospy.loginfo('%s: Preempted' % self._action_name)
+                self.preempt()
+                self._as.set_preempted()
+                return False
             # make sure we have actually moved
             if abs(self.point_history[-1][axis] - starting_point) >= min_delta:
                 if self.checkNotMoving(coords_to_check, axis):
                     return True
             if timeout != 0 and rospy.Time.now() - start > rospy.Duration(timeout):
                 rospy.logerr(f"Timeout of {timeout} reached!")
-                return False 
+                return True
             r.sleep()
     
     def blockUntillAxisChanges(self, axis: str, min_delta=2, timeout=0):
@@ -227,10 +232,17 @@ class MovementController:
         starting_point = self.point_history[-1][axis]
         rospy.loginfo(f"Blocking until {axis} is has changed! With starting point {starting_point} and minimum change = {min_delta}")
         start = rospy.Time.now()
-        while not rospy.is_shutdown():
+        while True:
+            # check for preempt
+            if self._as.is_preempt_requested() or rospy.is_shutdown():
+                rospy.loginfo('%s: Preempted' % self._action_name)
+                self.preempt()
+                self._as.set_preempted()
+                return False
+
             # make sure we have actually moved
             if abs(self.point_history[-1][axis] - starting_point) >= min_delta:
-                    return True
+                return True
             if timeout != 0 and rospy.Time.now() - start > rospy.Duration(timeout):
                 rospy.logerr(f"Timeout of {timeout} reached!")
                 return False 
@@ -408,7 +420,10 @@ class MovementController:
                         self.pressA()
                         self.rngDelay(0.03, 0.05)
                         self.pressS(release=True)
-                        self.blockUntillAxisChanges(self.LR_XZ_farm, timeout=5)
+                        
+                        if not self.blockUntillAxisChanges(self.LR_XZ_farm, timeout=5):
+                            rospy.logerr("Block Until Axis Change Returned False! Exiting")
+                            return
                         self.pressW()
                         self.rngDelay(0.2, 0.3)
                         self.pressW(release=True)
@@ -423,7 +438,9 @@ class MovementController:
                         self.pressD()
                         self.rngDelay(0.03, 0.05)
                         self.pressS(release=True)
-                        self.blockUntillAxisChanges(self.LR_XZ_farm, timeout=5)
+                        if not self.blockUntillAxisChanges(self.LR_XZ_farm, timeout=5):
+                            rospy.logerr("Block Until Axis Change Returned False! Exiting")
+                            return
                         self.pressW()
                         self.rngDelay(0.2, 0.3)
                         self.pressW(release=True)

@@ -42,7 +42,7 @@ RUN apt update && apt install --no-install-recommends -y \
      rm -rf /var/lib/apt/lists/* 
 RUN pip3 install attrdict 
 # literally builds wxWidgets from source as far as I can tell and it takes forever
-RUN pip3 install pyautogui pynput opencv-python mss wxPython pytesseract labelImg pascal-voc
+RUN pip3 install pyautogui pynput opencv-python mss wxPython pytesseract labelImg pascal-voc discord
 RUN echo "export PATH=$PATH:/home/ubuntu/.local/bin" >> .bashrc
 RUN wget https://github.com/xHayden/Minecraft-OCR/raw/master/mc.traineddata && sudo mv mc.traineddata /usr/share/tesseract-ocr/4.00/tessdata/
 # add ubuntu user

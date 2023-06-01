@@ -3,11 +3,14 @@
 		<group ns="autofarm">
             <!-- load config file farming_params -->
             <rosparam command="load" file="$(find minecros)/config/farming_params.yaml"/>
-            
+            <rosparam command="load" file="$(find minecros)/config/discord_secrets.yaml"/>
+
             <node name="movement_server" pkg="minecros" type="movement_node.py" output="screen"/>
 
             <node name="screen_publisher" pkg="minecros" type="screen_publisher.py" output="screen"/>
 
             <node name="ocr_server" pkg="minecros" type="ocr_publisher.py" output="screen"/>
+
+            <node name="discord_bot" pkg="minecros" type="discord_bot.py" output="screen"/>
         </group>
 </launch>

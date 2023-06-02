@@ -11,6 +11,10 @@
 
             <node name="ocr_server" pkg="minecros" type="ocr_publisher.py" output="screen"/>
 
+<<<<<<< HEAD
             <node name="discord_bot" pkg="minecros" type="discord_bot.py" output="screen"/>
+=======
+            <node name="main_control" pkg="minecros" type="main_control.py" output="screen"/>
+>>>>>>> faeafd0 (ban evading)
         </group>
 </launch>

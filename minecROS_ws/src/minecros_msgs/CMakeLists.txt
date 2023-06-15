@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   geometry_msgs
   std_msgs
+  std_srvs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -56,6 +57,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
    FILES
    discord_message.srv
+   MainControl.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -68,6 +70,7 @@ add_action_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
+  std_srvs
   actionlib_msgs
 )
 

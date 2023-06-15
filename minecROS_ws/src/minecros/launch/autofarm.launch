@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <launch> 
-		<group ns="autofarm">
+	<group ns="autofarm">
             <!-- load config file farming_params -->
-            <rosparam command="load" file="$(find minecros)/config/farming_params.yaml"/>
+            <rosparam command="load" file="$(find minecros)/config/farming_params_J2343.yaml"/>
             <rosparam command="load" file="$(find minecros)/config/discord_secrets.yaml"/>
 
             <node name="movement_server" pkg="minecros" type="movement_node.py" output="screen"/>
@@ -11,10 +11,8 @@
 
             <node name="ocr_server" pkg="minecros" type="ocr_publisher.py" output="screen"/>
 
-<<<<<<< HEAD
             <node name="discord_bot" pkg="minecros" type="discord_bot.py" output="screen"/>
-=======
+            
             <node name="main_control" pkg="minecros" type="main_control.py" output="screen"/>
->>>>>>> faeafd0 (ban evading)
         </group>
 </launch>

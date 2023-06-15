@@ -23,6 +23,10 @@ class MovementType(enum.Enum):
     FORWARD_BACK_FARM = 2
     WARP_GARDEN = 3
 
+class Direction(enum.Enum):
+    LEFT = 0
+    RIGHT = 1
+
 POINTS_TO_REMEMBER = 10
 OCR_HZ = 10 # the rate we get points from the OCR node
 STRICT_AXIS_THRESH = 1 # if the axis is off by more than this, don't fly up
@@ -89,6 +93,7 @@ class MovementController:
         self.keySPressed = False
         self.keyDPressed = False
         self.keySpacePressed = False
+        self.current_direction = Direction.RIGHT
 
 
         rospy.loginfo("Finished initalizing movement server")
@@ -107,7 +112,7 @@ class MovementController:
         self.keyboard.release("d")
         self.keyboard.release(Key.space)
     
-    def preempt(self):
+    def preempt(self, success):
         rospy.logwarn(f"Preempt called for movement server")
         self.release_all_keys()
         self.mouse.release(Button.left)
@@ -118,7 +123,9 @@ class MovementController:
         self.keyDPressed = False
         self.keySpacePressed = False
         self.command = None
-        self._as.set_preempted()
+        # result is true if preempt was requested, false if from something going wrong
+        self._result.success = success
+        self._as.set_preempted(self._result)
 
     def checkNotMoving(self, points_to_check, axis="X"):
         # check if the last points_to_check points are the same on the given axis
@@ -215,16 +222,16 @@ class MovementController:
         while not rospy.is_shutdown():
             if self._as.is_preempt_requested() or rospy.is_shutdown():
                 rospy.loginfo('%s: Preempted' % self._action_name)
-                self.preempt()
-                self._as.set_preempted()
+                self.preempt(True)
                 return False
             # make sure we have actually moved
             if abs(self.point_history[-1][axis] - starting_point) >= min_delta:
                 if self.checkNotMoving(coords_to_check, axis):
                     return True
             if timeout != 0 and rospy.Time.now() - start > rospy.Duration(timeout):
-                rospy.logerr(f"Timeout of {timeout} reached!")
-                return True
+                rospy.logerr(f"Timeout of {timeout} reached in Axis Stop! Preempting")
+                self.preempt(False)
+                return False
             r.sleep()
     
     def blockUntillAxisChanges(self, axis: str, min_delta=2, timeout=0):
@@ -236,29 +243,39 @@ class MovementController:
             # check for preempt
             if self._as.is_preempt_requested() or rospy.is_shutdown():
                 rospy.loginfo('%s: Preempted' % self._action_name)
-                self.preempt()
-                self._as.set_preempted()
+                self.preempt(True)
                 return False
 
             # make sure we have actually moved
             if abs(self.point_history[-1][axis] - starting_point) >= min_delta:
                 return True
             if timeout != 0 and rospy.Time.now() - start > rospy.Duration(timeout):
-                rospy.logerr(f"Timeout of {timeout} reached!")
-                return False 
+                rospy.logerr(f"Timeout of {timeout} reached in Axis Change! Preempting")
+                self.preempt(False)
+                return False
             r.sleep()
+
+    
 
     def logoff(self):
         rospy.logwarn("---Disconnecting from server---")
-        self.keyboard.press(Key.esc)
-        self.keyboard.release(Key.esc)
-        self.mouse.position = (520, 527)
-        self.mouse.click(Button.left)
-        self.mouse.release(Button.left)
+        self.keyboard.press(Key.alt)
+        time.sleep(0.2)
+        self.keyboard.press(Key.f4)
+        self.keyboard.release(Key.alt)
+        self.keyboard.release(Key.f4)
 
     # assumes that positive 
     def movement_action_CB(self, goal):
         rospy.loginfo(f"Movement server called with goal {goal}! Waiting 3 seconds to start")
+        if goal.command == minecros_msgs.msg.ControlMovementGoal.LOGOFF:
+            rospy.loginfo_once("Starting logoff")
+            self.logoff()
+            self.preempt(True)
+            self._result.success = True
+            self._result.timed_out = False
+            self._as.set_succeeded(self._result)
+            return
         time.sleep(3)
         self.clearPoints()
         r = rospy.Rate(100)
@@ -267,25 +284,16 @@ class MovementController:
             # check that preempt has not been requested by the client
             if self._as.is_preempt_requested() or rospy.is_shutdown():
                 rospy.loginfo('%s: Preempted' % self._action_name)
-                self.preempt()
-                self._as.set_preempted()
+                self.preempt(True)
                 return
             
             # handles start of a movement
             if self.command == None:
-                if goal.command == minecros_msgs.msg.ControlMovementGoal.LOGOFF:
-                    rospy.loginfo_once("Starting logoff")
-                    self.logoff()
-                    self.preempt()
-                    self._result.success = True
-                    self._result.timed_out = False
-                    self._as.set_succeeded(self._result)
-                    return
-
-                elif goal.command == minecros_msgs.msg.ControlMovementGoal.LEFT_RIGHT_FARM:
+                if goal.command == minecros_msgs.msg.ControlMovementGoal.LEFT_RIGHT_FARM:
                     rospy.loginfo_once("Starting left right farm")
-
-                    if goal.starting_level == minecros_msgs.msg.ControlMovementGoal.TOP:
+                    if (goal.starting_direction == minecros_msgs.msg.ControlMovementGoal.RESUME):
+                        pass
+                    elif goal.starting_level == minecros_msgs.msg.ControlMovementGoal.TOP:
                         self.LR_ON_LOWER = False
                     elif goal.starting_level == minecros_msgs.msg.ControlMovementGoal.BOTTOM:
                         self.LR_ON_LOWER = True
@@ -294,10 +302,14 @@ class MovementController:
 
                     self.command = MovementType.LEFT_RIGHT_FARM
                     self.pressW()
-                    if goal.starting_direction == minecros_msgs.msg.ControlMovementGoal.RIGHT:
-                        self.pressD()
-                    elif goal.starting_direction == minecros_msgs.msg.ControlMovementGoal.LEFT:
-                        self.pressA()
+                    if (goal.starting_direction == minecros_msgs.msg.ControlMovementGoal.RIGHT or
+                       (goal.starting_direction == minecros_msgs.msg.ControlMovementGoal.RESUME and self.current_direction == Direction.RIGHT)):
+                            self.pressD()
+                            self.current_direction = Direction.RIGHT
+                    elif (goal.starting_direction == minecros_msgs.msg.ControlMovementGoal.LEFT or
+                         (goal.starting_direction == minecros_msgs.msg.ControlMovementGoal.RESUME and self.current_direction == Direction.LEFT)):
+                            self.pressA()
+                            self.current_direction = Direction.LEFT
                     else:
                         assert False, "Goal must be left or right"
                     self.rngDelay(0.1, 0.2)
@@ -318,7 +330,7 @@ class MovementController:
                     self.command = MovementType.WARP_GARDEN
                 else:
                     rospy.logerr(f"Unknown command {goal.command} -- Ignoring")
-                    self.preempt()
+                    self.preempt(False)
                     return
                 
             if self.command == MovementType.FORWARD_BACK_FARM:
@@ -327,7 +339,7 @@ class MovementController:
                     rospy.logwarn_once("Waiting for points")
                     continue
 
-                rospy.loginfo_throttle(1, f"Current point: {self.point_history}")
+                #rospy.loginfo_throttle(1, f"Current point: {self.point_history}")
                 # print last 3 points on FB_XZ_farm
 
                 # checks if we are not moving for 1 second
@@ -350,7 +362,7 @@ class MovementController:
                     rospy.logwarn_once("Waiting for points")
                     continue
 
-                rospy.loginfo_throttle(1, f"Current point: {self.point_history}")
+                #rospy.loginfo_throttle(1, f"Current point: {self.point_history}")
 
                 # check if Y has dropped from cutoff
                 if self.point_history[-1]["Y"] < self.LR_Y_cutoff and not self.LR_ON_LOWER:
@@ -364,7 +376,8 @@ class MovementController:
                     r = rospy.Rate(OCR_HZ)
                     # poll until X or Z stops changing
                     rospy.loginfo("Waiting for X or Z to stop changing")
-                    self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ)
+                    if not self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ):
+                        return
                     rospy.loginfo("Continuing movement")
                     self.clearPoints()
                     self.pressS(release=True)
@@ -380,16 +393,18 @@ class MovementController:
                     self.release_all_keys()
                     # double tap space
                     # press space, wait 50ms and release space wait 50ms and press space again
+                    for i in range(4):
+                        self.pressSpace()
+                        time.sleep(0.02 + i * 0.01)
+                        self.pressSpace(release=True)
+                        time.sleep(0.02 + i * 0.01)
+                        self.pressSpace()
+                        time.sleep(0.02 + i * 0.01)
+                        self.pressSpace(release=True)
+                        time.sleep(0.02 + i * 0.01)
                     self.pressSpace()
-                    time.sleep(0.05)
-                    self.pressSpace(release=True)
-                    time.sleep(0.05)
-                    self.pressSpace()
-                    time.sleep(0.05)
-                    self.pressSpace(release=True)
-                    time.sleep(0.05)
-                    self.pressSpace()
-                    self.blockUntillAxisStops("Y", OCR_HZ//2, min_delta=2)
+                    if not self.blockUntillAxisStops("Y", OCR_HZ, min_delta=3):
+                        return
                     self.pressSpace(release=True)
                     # start holding right
                     self.pressD()
@@ -416,13 +431,16 @@ class MovementController:
                         self.pressD(release=True)
                         self.rngDelay(0.05, 0.05)
                         self.pressS()
-                        self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ//2, timeout=5)
+                        if not self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ//2, timeout=5):
+                            return
+                        self.current_direction = Direction.LEFT
                         self.pressA()
                         self.rngDelay(0.03, 0.05)
                         self.pressS(release=True)
                         
                         if not self.blockUntillAxisChanges(self.LR_XZ_farm, timeout=5):
                             rospy.logerr("Block Until Axis Change Returned False! Exiting")
+                            #self.preempt(False)
                             return
                         self.pressW()
                         self.rngDelay(0.2, 0.3)
@@ -434,34 +452,42 @@ class MovementController:
                         self.pressA(release=True)
                         self.rngDelay(0.05, 0.05)
                         self.pressS()
-                        self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ//2, timeout=5)
+                        if not self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ//2, timeout=5):
+                            return
+                        self.current_direction = Direction.RIGHT
                         self.pressD()
                         self.rngDelay(0.03, 0.05)
                         self.pressS(release=True)
                         if not self.blockUntillAxisChanges(self.LR_XZ_farm, timeout=5):
                             rospy.logerr("Block Until Axis Change Returned False! Exiting")
+                            #self.preempt(False)
                             return
                         self.pressW()
                         self.rngDelay(0.2, 0.3)
                         self.pressW(release=True)
                         self.clearPoints()
+                        
                     # upper rows
                     elif self.keyDPressed:
                         rospy.loginfo("Moving left!")
                         self.pressD(release=True)
                         self.rngDelay(0.05, 0.1)
                         self.pressW()
-                        self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ//2, timeout=5)
+                        if not self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ//2, timeout=5):
+                            return
+                        self.current_direction = Direction.LEFT
                         self.pressA()
                         self.pressW(release=True)
                         self.clearPoints()
 
                     elif self.keyAPressed:
-                        rospy.loginfo("Moving left!")
+                        rospy.loginfo("Moving Right!")
                         self.pressA(release=True)
                         self.rngDelay(0.05, 0.1)
                         self.pressW()
-                        self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ//2, timeout=5)
+                        if not self.blockUntillAxisStops(inverse_axis(self.LR_XZ_farm), OCR_HZ//2, timeout=5):
+                            return
+                        self.current_direction = Direction.RIGHT
                         self.pressD()
                         self.pressW(release=True)
                         self.clearPoints()

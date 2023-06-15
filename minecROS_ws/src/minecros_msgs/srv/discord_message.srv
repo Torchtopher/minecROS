@@ -1,4 +1,8 @@
-uint16 notify_disconnect=0
-uint16 notify_connect=1
-uint16 notify_sanity_check=2
-uint16 message_type
+uint8 NOTIFYDISCONNECT=0
+uint8 NOTIFYCONNECT=1
+uint8 NOTIFYSAINTYCHECK=2
+uint8 GENERICMESSAGE=3
+uint8 message_type
+
+string str_to_send
+---

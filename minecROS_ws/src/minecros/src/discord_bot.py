@@ -12,10 +12,13 @@ import io
 from cv_bridge import CvBridge
 import cv2
 import pyautogui
-from moviepy.editor import VideoFileClip
 from minecros_msgs.srv import discord_message
+from minecros_msgs.srv import discord_messageRequest
+from minecros_msgs.srv import discord_messageResponse, MainControl, MainControlRequest
+import time
 import asyncio
-# queue
+import datetime
+
 import queue
 
 VIDEO_SECONDS = 5
@@ -55,20 +58,38 @@ class ROSDiscordBot(discord.Client):
         self.init_time = rospy.Time.now()
         self.channel_to_send = None
         self.message_handler = rospy.Service('/minecros/send_discord_msg', discord_message, self.handle_incoming_message)
+        self.main_control_srv = rospy.ServiceProxy('/minecros/main_ctrl',  MainControl)
         self.message_queue = queue.Queue()
 
     def handle_incoming_message(self, req):
         print(req)
-        self.message_queue.put(f"{[member.mention for member in self.subscribed_users]} {req.message_type}, I ran this from a ros message")
-        return True
+        message = f"{[member.mention for member in self.subscribed_users]}"
+        if req.message_type == discord_messageRequest.NOTIFYDISCONNECT:
+            message += f": Bot has disconnected with given reason '{req.str_to_send}'"
+        elif req.message_type == discord_messageRequest.NOTIFYCONNECT:
+            message += f": Bot has successfully started farming"
+        elif req.message_type == discord_messageRequest.NOTIFYSAINTYCHECK:
+            message += f": Bot failed check {req.str_to_send}"
+        elif req.message_type == discord_messageRequest.GENERICMESSAGE:
+            message += f": Generic Message: {req.str_to_send}"
+        self.message_queue.put(message)
+        return discord_messageResponse()
     
-    @tasks.loop(seconds=3.0)
+    @tasks.loop(seconds=2.0)
     async def send_message(self):
+        if rospy.is_shutdown():
+            exit(0)
+            
         rospy.loginfo_throttle(10, "Checking for messages to send")
         if not self.message_queue.empty():
             msg = self.message_queue.get(block=False)
             rospy.loginfo(f"Sending message: {msg}")
-            await self.channel_to_send.send(msg)
+            my_files = []
+            for i in range(0, len(self.last_imgs), len(self.last_imgs) // 6):
+                cv2.imwrite(f"coolest_image{i}.png", self.last_imgs[i])
+                my_files.append(discord.File(f"coolest_image{i}.png"))
+            
+            await self.channel_to_send.send(msg, files=my_files)
 
     async def on_ready(self):
         self.send_message.start()
@@ -108,7 +129,7 @@ class ROSDiscordBot(discord.Client):
             print("sending screenshot")
             response = f'''{message.author.mention} - 
 Position X: {self.last_coords[-1].x}, Y: {self.last_coords[-1].y}, {self.last_coords[-1].z}
-Uptime {(rospy.Time.now() - self.init_time)} hours
+Uptime {(rospy.Time.now() - self.init_time).to_seconds} hours
 Users subscribed: {[member.name for member in self.subscribed_users]}'''
             await message.channel.send(response, reference=message)
 
@@ -129,11 +150,31 @@ Users subscribed: {[member.name for member in self.subscribed_users]}'''
                 my_files.append(discord.File(f"coolest_image{i}.png"))
             await message.channel.send(files=my_files)
 
+        elif message.content == "!disconnect" and message.author in self.subscribed_users:
+            rospy.loginfo("Processesing discord disconnect")
+            msg = MainControlRequest()
+            msg.command = MainControlRequest.DISCONNECT
+            res = self.main_control_srv(msg)
+
+        elif "!break" in message.content and message.author in self.subscribed_users:
+            rospy.loginfo("Processing break request")
+            try:
+                time_to_break = int(message.content.split("!break ")[1])
+            except Exception as e:
+                await message.channel.send(f"Failed to process time, error={e}", reference=message)
+            msg = MainControlRequest()
+            msg.command = MainControlRequest.BREAK
+            msg.minutes_to_break = time_to_break
+            res = self.main_control_srv(msg)
+            await message.channel.send(f"Taking a break! Will continue farming at {datetime.datetime.now() + datetime.timedelta(minutes = time_to_break)}", reference=message)
+
         elif message.content == "!help":
             response = f'''{message.author.mention} -
 !watch - subscribe to bot updates (required to use !info and !video)
 !info - get info about the bot
 !video - get 6 images from the last 5 seconds
+!disconnect - disconnect
+!break X - takes a break for X minutes
 !response - get a response from the bot :)'''
             await message.channel.send(response, reference=message)
 
@@ -146,7 +187,7 @@ Users subscribed: {[member.name for member in self.subscribed_users]}'''
             self.last_imgs.pop(0)
 
     def coord_CB(self, msg):
-        rospy.loginfo_coords(10, "coord received")
+        rospy.loginfo_throttle(10, "coord received")
         self.last_coords.append(msg)
         if len(self.last_coords) > IMAGES_TO_KEEP:
             self.last_coords.pop(0)

@@ -17,7 +17,7 @@ import io
 import copy
 import re
 
-PUBLISH_ANGLE = False
+PUBLISH_ANGLE = True
 def handle_param_load(name):
     try:
         res = rospy.get_param(name)
